@@ -1,0 +1,15 @@
+../Src/motor_controller.c:10:13:Brake_ON	1
+../Src/motor_controller.c:14:13:Brake_OFF	1
+../Src/motor_controller.c:19:13:setPWM	4
+../Src/motor_controller.c:30:13:setDirection	3
+../Src/motor_controller.c:45:13:setNoDirection	1
+../Src/motor_controller.c:55:6:Motor_Init	7
+../Src/motor_controller.c:109:6:Motor_Invert	1
+../Src/motor_controller.c:114:6:Motor_SetSpeed	5
+../Src/motor_controller.c:129:6:Motor_Forward	1
+../Src/motor_controller.c:134:6:Motor_Reverse	1
+../Src/motor_controller.c:139:6:Motor_BrakeMode	1
+../Src/motor_controller.c:145:6:Motor_CoastMode	1
+../Src/motor_controller.c:151:6:Motor_IsInverted	1
+../Src/motor_controller.c:155:6:Motor_BrakeEnabled	1
+../Src/motor_controller.c:159:7:Motor_GetCurrentSpeed	1
