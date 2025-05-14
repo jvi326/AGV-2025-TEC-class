@@ -73,31 +73,62 @@ int main(void) {
 	//System_Ready_Indicator();
 
     // Initialize motor (Dir1, Dir2, PWM, BrakePin)
-    MotorController motorA;
-    MotorController motorB;
-    Motor_Init(&motorA, 6, 7, 8, 5);
-    Motor_Init(&motorB, 11, 10, 9, 4);
+    MotorController leftMotor;
+    MotorController rightMotor;
+    Motor_Init(&leftMotor, 6, 7, 8, 5);
+    Motor_Init(&rightMotor, 11, 10, 9, 4);
 
-    Motor_Invert(&motorB, 1);
+    Motor_Invert(&rightMotor, 1);
+
+    CHASSIS agv;
+    Init_Chassis(&agv, leftMotor, rightMotor);
 
 
     // Test sequence
     while (1) {
-    	Motor_SetSpeed(&motorA, -1.0);
-    	Motor_SetSpeed(&motorB, -1.0);
-		delay_ms(1000);
-    	Motor_SetSpeed(&motorA, -0.8);
-    	Motor_SetSpeed(&motorB, -0.8);
-		delay_ms(1000);
-		Motor_SetSpeed(&motorA, 0.4);
-		Motor_SetSpeed(&motorB, 0.4);
-		delay_ms(1000);
-		Motor_SetSpeed(&motorA, 0.1);
-		Motor_SetSpeed(&motorB, 0.1);
-		delay_ms(1000);
-		Motor_SetSpeed(&motorA, 0);
-		Motor_SetSpeed(&motorB, 0);
-		delay_ms(1000);
+
+        // === Motion Test Routine ===
+
+        // 1. Go forward
+        set_AdvanceSpeed(&agv, 0.8f);
+        set_TurnSpeed(&agv, 0.0f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // 2. Go backward
+        set_AdvanceSpeed(&agv, -0.8f);
+        set_TurnSpeed(&agv, 0.0f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // 3. Turn right in place
+        set_AdvanceSpeed(&agv, 0.0f);
+        set_TurnSpeed(&agv, 1.0f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // 4. Turn left in place
+        set_AdvanceSpeed(&agv, 0.0f);
+        set_TurnSpeed(&agv, -1.0f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // 5. Arc turn right (fast right wheel, slow left wheel)
+        set_AdvanceSpeed(&agv, 0.6f);
+        set_TurnSpeed(&agv, 0.5f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // 6. Arc turn left (fast left wheel, slow right wheel)
+        set_AdvanceSpeed(&agv, 0.6f);
+        set_TurnSpeed(&agv, -0.5f);
+        apply_CurrentSpeedsToMotors(&agv);
+        delay_ms(2000);
+
+        // Final brake
+        set_BrakeMode(&agv);
+        reset_ChassisSpeeds(&agv);
+        apply_CurrentSpeedsToMotors(&agv);
 
     	if (rx_ready == 1) {
     		USART1_HandleMessage();

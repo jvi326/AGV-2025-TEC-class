@@ -31,7 +31,8 @@ typedef struct {
 void Init_Chassis(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight);
 
 //Control functions
-void set_FinalSpeedsMotors(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight);
+void reset_ChassisSpeeds(CHASSIS* AGV_Chassis);
+void apply_CurrentSpeedsToMotors(CHASSIS* AGV_Chassis);
 void set_SafeFactorBackwards(CHASSIS* AGV_Chassis, float safeFactor);
 void set_MaxSpeed(CHASSIS* AGV_Chassis, float maxSpeed);
 void set_AdvanceSpeed(CHASSIS* AGV_Chassis, float advanceSpeed);
