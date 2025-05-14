@@ -6,6 +6,7 @@
  */
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 #include "stm32f051x8.h"
 #include "motor_controller.h"
 #include "chassis.h"
@@ -24,13 +25,16 @@ static void calculateWheelSpeeds(CHASSIS* AGV_Chassis){
 	AGV_Chassis->currentRightWheelSpeed = baseSpeed + turnEffect;
 
 	//Normalize result between range [-1.0, 1.0]
-	float maxMagnitude = fmaxf(fabsf(AGV_Chassis->currentLeftWheelSpeed), AGV_Chassis->currentRightWheelSpeed);
+	float maxMagnitude = fmaxf(fabsf(AGV_Chassis->currentLeftWheelSpeed), fabsf(AGV_Chassis->currentRightWheelSpeed));
 
 	if (maxMagnitude > 1.0){
 		float scaleFactor = 1/maxMagnitude;
 		AGV_Chassis->currentLeftWheelSpeed *= scaleFactor;
 		AGV_Chassis->currentRightWheelSpeed *= scaleFactor;
 	}
+
+	AGV_Chassis->currentLeftWheelSpeed = fmaxf(fminf(AGV_Chassis->currentLeftWheelSpeed, 1.0f), -1.0f);
+	AGV_Chassis->currentRightWheelSpeed = fmaxf(fminf(AGV_Chassis->currentRightWheelSpeed, 1.0f), -1.0f);
 }
 
 //Init functions
@@ -56,14 +60,18 @@ void Init_Chassis(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorControll
 	Motor_BrakeMode(&AGV_Chassis->wheelRight);
 }
 
-//Control functions
-void set_FinalSpeedsMotors(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight){
-
-
-	AGV_Chassis->safeFactorBackwardsSpeed = 0.5;
-	AGV_Chassis->maxSpeed = 0.8;
+void reset_ChassisSpeeds(CHASSIS* AGV_Chassis){
+	AGV_Chassis->safeFactorBackwardsSpeed = 0.5f;
+	AGV_Chassis->maxSpeed = 0.8f;
 	AGV_Chassis->currentAdvanceSpeed = 0;
 	AGV_Chassis->currentTurnSpeed = 0;
+}
+
+//Control functions
+void apply_CurrentSpeedsToMotors(CHASSIS* AGV_Chassis){
+	calculateWheelSpeeds(AGV_Chassis);
+	Motor_SetSpeed(&AGV_Chassis->wheelLeft, AGV_Chassis->currentLeftWheelSpeed);
+	Motor_SetSpeed(&AGV_Chassis->wheelRight, AGV_Chassis->currentRightWheelSpeed);
 }
 void set_SafeFactorBackwards(CHASSIS* AGV_Chassis, float safeFactor){
 	safeFactor = (safeFactor < 0) ? 0 : (safeFactor > 1.0) ? 1.0 : safeFactor;
