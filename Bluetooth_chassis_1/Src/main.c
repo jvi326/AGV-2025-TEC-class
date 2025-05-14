@@ -47,7 +47,7 @@ uint8_t arrayToArrayIntOrFloat(volatile NumberArray* numbersAsArray, uint8_t num
 void delay_ms(uint32_t ms);
 int atoi(uint8_t* data, int size);
 char* itoa(int num, char* str, int base);
-float atof(uint8_t* data, int size);
+float atof(volatile uint8_t* data, int size);
 int strncmp(const char *s1, const char *s2, int n);
 
 void decideNegPos(volatile Numeros* numeros, uint8_t count);
@@ -68,16 +68,37 @@ void System_Ready_Indicator(void);
 
 int main(void) {
 	USART1_Init_Interrupt();
-	LED_Init();
+	//LED_Init();
 
-	System_Ready_Indicator();
+	//System_Ready_Indicator();
 
-    // Initialize motor (PWM: PC8, Dir1: PC6, Dir2: PC7, Brake: PC5)
-    MotorController motor;
-    Motor_Init(&motor, 6, 7, 8, 5);
+    // Initialize motor (Dir1, Dir2, PWM, BrakePin)
+    MotorController motorA;
+    MotorController motorB;
+    Motor_Init(&motorA, 6, 7, 8, 5);
+    Motor_Init(&motorB, 11, 10, 9, 4);
+
+    Motor_Invert(&motorB, 1);
+
 
     // Test sequence
     while (1) {
+    	Motor_SetSpeed(&motorA, -1.0);
+    	Motor_SetSpeed(&motorB, -1.0);
+		delay_ms(1000);
+    	Motor_SetSpeed(&motorA, -0.8);
+    	Motor_SetSpeed(&motorB, -0.8);
+		delay_ms(1000);
+		Motor_SetSpeed(&motorA, 0.4);
+		Motor_SetSpeed(&motorB, 0.4);
+		delay_ms(1000);
+		Motor_SetSpeed(&motorA, 0.1);
+		Motor_SetSpeed(&motorB, 0.1);
+		delay_ms(1000);
+		Motor_SetSpeed(&motorA, 0);
+		Motor_SetSpeed(&motorB, 0);
+		delay_ms(1000);
+
     	if (rx_ready == 1) {
     		USART1_HandleMessage();
     	}
@@ -315,7 +336,7 @@ char* itoa(int num, char* str, int base) {
 }
 
 // Array to float
-float atof(uint8_t* data, int size) {
+float atof(volatile uint8_t* data, int size) {
     float result = 0.0;
     bool isNegative = false;
     bool hasDecimal = false;

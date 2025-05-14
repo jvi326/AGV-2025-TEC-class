@@ -3,16 +3,16 @@
 #include <stdbool.h>
 #include <math.h>
 
-#define PWM_TIMER_PRESCALER 8000000/1 - 1   // 8MHz / 8 = 1MHz
-#define PWM_TIMER_PERIOD    999  // 1MHz / 1000 = 1kHz PWM
+#define PWM_TIMER_PRESCALER (8000 - 1)   // 8MHz / 8 = 1MHz
+#define PWM_TIMER_PERIOD    1000 - 1  // 1MHz / 1000 = 1kHz PWM
 
 // Set brake relay state
-static void Brake_ON(MotorController* motor) {
-    GPIOC->ODR &= ~(1 << motor->brakeRelayPin);  // Relay OPEN (brake resistor active)
+void Brake_ON(MotorController* motor) {
+	GPIOC->ODR &= ~(1 << motor->brakeRelayPin); // Relay OPEN (brake resistor active)
 }
 
-static void Brake_OFF(MotorController* motor) {
-    GPIOC->ODR |= (1 << motor->brakeRelayPin);   // Relay CLOSED (normal operation)
+void Brake_OFF(MotorController* motor) {
+	GPIOC->ODR |= (1 << motor->brakeRelayPin); // Relay CLOSED (normal operation)
 }
 
 // Set PWM duty cycle (0-1000)
@@ -85,7 +85,7 @@ void Motor_Init(MotorController* motor, int dir1, int dir2, int pwmpin, int brak
 	//AF0, in AFRH works for PC8 or greater
 	GPIOC->AFR[1] &= ~(0xF << ((pwmpin-8)*4));
 
-    TIM3->PSC = PWM_TIMER_PRESCALER;
+    TIM3->PSC = 47;
     TIM3->ARR = PWM_TIMER_PERIOD;
     TIM3->CR1 |= 1<<7; //Enable autoreload preload
 
@@ -119,9 +119,11 @@ void Motor_SetSpeed(MotorController* motor, float speed) {
     if (fabsf(speed) < 0.001) {  // Near zero
         setPWM(motor, 0);
         setNoDirection(motor);
+        Motor_BrakeMode(motor);
     } else {
+    	Motor_CoastMode(motor);
         setDirection(motor, (speed > 0));
-        setPWM(motor, (uint16_t)(fabsf(speed) * PWM_TIMER_PERIOD + 0.5));
+        setPWM(motor, (uint16_t)(fabsf(speed) * PWM_TIMER_PERIOD));
     }
 }
 
@@ -138,7 +140,7 @@ void Motor_Reverse(MotorController* motor) {
 // Enable brake mode (resistor absorbs current)
 void Motor_BrakeMode(MotorController* motor) {
     motor->brakeEnabled = true;
-    Brake_ON(motor);
+     Brake_ON(motor);
 }
 
 // Disable brake mode (coast freely)
