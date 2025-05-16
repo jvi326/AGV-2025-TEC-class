@@ -14,24 +14,25 @@
 #include <stdbool.h>
 
 typedef struct {
-	MotorController wheelLeft;
-	MotorController wheelRight;
-	float safeFactorBackwardsSpeed;  //Range 0 to 1.0, recommended values below 0.5
-	float maxSpeed;  //Range 0 to 1.0
-    float currentAdvanceSpeed;  //Range -1.0 backWards to 1.0 Front
-    float currentTurnSpeed;  //Range -1.0 LeftTurn to 1.0 RightTurn
-    float currentLeftWheelSpeed; //Current speed for left wheel
-    float currentRightWheelSpeed; //Current speed for right wheel
-    bool advanceInverted; // 0 = normal, 1 = front is at the back
-    bool turnInverted; // 0 = normal, 1 = turn directions are inverted
-    bool brakeEnabled; // 0 = coastMode, 1 = breakMode
+MotorController wheelLeft;
+MotorController wheelRight;
+float safeFactorBackwardsSpeed; //Range 0 to 1.0, recommended values below 0.5
+float maxSpeed; //Range 0 to 1.0
+float currentAdvanceSpeed; //Range -1.0 backWards to 1.0 Front
+float currentTurnSpeed; //Range -1.0 LeftTurn to 1.0 RightTurn
+float currentLeftWheelSpeed; //Current speed for left wheel
+float currentRightWheelSpeed; //Current speed for right wheel
+bool advanceInverted; // 0 = normal, 1 = front is at the back
+bool turnInverted; // 0 = normal, 1 = turn directions are inverted
+bool brakeEnabled; // 0 = coastMode, 1 = breakMode
 } CHASSIS;
 
 //Init functions
 void Init_Chassis(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight);
 
 //Control functions
-void set_FinalSpeedsMotors(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight);
+void reset_ChassisSpeeds(CHASSIS* AGV_Chassis);
+void apply_CurrentSpeedsToMotors(CHASSIS* AGV_Chassis);
 void set_SafeFactorBackwards(CHASSIS* AGV_Chassis, float safeFactor);
 void set_MaxSpeed(CHASSIS* AGV_Chassis, float maxSpeed);
 void set_AdvanceSpeed(CHASSIS* AGV_Chassis, float advanceSpeed);

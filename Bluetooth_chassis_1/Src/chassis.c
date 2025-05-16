@@ -13,7 +13,7 @@
 static void calculateWheelSpeeds(CHASSIS* AGV_Chassis){
 	//Selecting real max Speed
 	float speedLimit;
-	speedLimit = (AGV_Chassis->currentAdvanceSpeed < 0) ? AGV_Chassis->safeFactorBackwardsSpeed : AGV_Chassis->maxSpeed;
+	speedLimit = (AGV_Chassis->currentAdvanceSpeed <= 0) ? AGV_Chassis->safeFactorBackwardsSpeed : AGV_Chassis->maxSpeed;
 
 	//Calculations for Advance Speed and Turn Speed
 	float baseSpeed = AGV_Chassis->currentAdvanceSpeed * speedLimit;
@@ -57,13 +57,18 @@ void Init_Chassis(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorControll
 }
 
 //Control functions
-void set_FinalSpeedsMotors(CHASSIS* AGV_Chassis, MotorController wheelLeft, MotorController wheelRight){
-
-
-	AGV_Chassis->safeFactorBackwardsSpeed = 0.5;
-	AGV_Chassis->maxSpeed = 0.8;
+void reset_ChassisSpeeds(CHASSIS* AGV_Chassis){
+	AGV_Chassis->safeFactorBackwardsSpeed = 0.5f;
+	AGV_Chassis->maxSpeed = 0.8f;
 	AGV_Chassis->currentAdvanceSpeed = 0;
 	AGV_Chassis->currentTurnSpeed = 0;
+}
+
+//Control functions
+void apply_CurrentSpeedsToMotors(CHASSIS* AGV_Chassis){
+	calculateWheelSpeeds(AGV_Chassis);
+	Motor_SetSpeed(&AGV_Chassis->wheelLeft, AGV_Chassis->currentLeftWheelSpeed);
+	Motor_SetSpeed(&AGV_Chassis->wheelRight, AGV_Chassis->currentRightWheelSpeed);
 }
 void set_SafeFactorBackwards(CHASSIS* AGV_Chassis, float safeFactor){
 	safeFactor = (safeFactor < 0) ? 0 : (safeFactor > 1.0) ? 1.0 : safeFactor;
