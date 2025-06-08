@@ -41,6 +41,8 @@ void set_AdvanceInverted(CHASSIS* AGV_Chassis, bool invert);
 void set_TurnInverted(CHASSIS* AGV_Chassis, bool invert);
 void set_BrakeMode(CHASSIS* AGV_Chassis);
 void set_CoastMode(CHASSIS* AGV_Chassis);
+void stop_Chassis(CHASSIS* AGV_Chassis);
+void pause_Chassis(CHASSIS* AGV_Chassis);
 
 //Status functions
 float get_CurrentChassisAdvanceSpeed(const CHASSIS* AGV_C);

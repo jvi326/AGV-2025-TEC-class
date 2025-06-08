@@ -1,0 +1,7 @@
+../Src/servos.c:29:6:Servos_Init	8	static
+../Src/servos.c:71:6:servos_setRange	16	static
+../Src/servos.c:88:6:servos_setTurnStepSize	16	static
+../Src/servos.c:94:6:servos_setStepTime	16	static
+../Src/servos.c:101:6:servos_stop	16	static
+../Src/servos.c:106:6:servos_resetPosition	8	static
+../Src/servos.c:113:6:TIM6_DAC_IRQHandler	8	static

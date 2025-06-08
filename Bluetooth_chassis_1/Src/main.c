@@ -21,6 +21,8 @@
 #include "stm32f051x8.h"
 #include "motor_controller.h"
 #include "chassis.h"
+#include "elevator.h"
+#include "ws2812b_dma.h"
 
 volatile bool ir_detected = false;
 
@@ -76,104 +78,82 @@ float atof(volatile uint8_t* data, int size);
 int strncmp(const char *s1, const char *s2, int n);
 
 void decideNegPos(volatile Numeros* numeros, uint8_t count);
+void decideDir(CHASSIS* AGV_Chassis, ELEVATOR* elevator,volatile Numeros* numeros, uint8_t count);
 
 // Communication function prototypes
-void USART1_IRQHandler(void);
-void USART1_HandleMessage(CHASSIS* AGV_Chassis);
-void USART1_SendChar(char c);
-void USART1_SendString(const char *str);
-void USART1_SendFloat(float value, uint8_t decimalPlaces);
+void USART2_IRQHandler(void);
+void USART2_HandleMessage(CHASSIS* AGV_Chassis, ELEVATOR* elevator);
+void USART2_SendChar(char c);
+void USART2_SendString(const char *str);
+void USART2_SendFloat(float value, uint8_t decimalPlaces);
 
 // Hardware configuration functions
-void USART1_Init_Interrupt(void);
-void LED_Init(void);
+void USART2_Init_Interrupt(void);
 
 // System initialization functions
 void System_Ready_Indicator(void);
+void INFRAROJO_INT_INIT(void);
 
-MotorController motorA;
-MotorController motorB;
-CHASSIS agv;
 
 int main(void) {
-	USART1_Init_Interrupt();
-	LED_Init();
+	USART2_Init_Interrupt();
 	System_Ready_Indicator();
+
 	INFRAROJO_INT_INIT();
 	MotorController motorA;
 	MotorController motorB;
 	CHASSIS agv;
+	ELEVATOR elevator;
+
 	// Initialize motor (Dir1, Dir2, PWM, BrakePin)
+	Motor_Init(&motorA, 6, 7, 8, 5);
+	Motor_Init(&motorB, 10, 11, 9, 4);
+	Motor_Invert(&motorB, 1);
 
-	    Motor_Init(&motorA, 6, 7, 8, 5);
-	    Motor_Init(&motorB, 11, 10, 9, 4);
-	    Motor_Invert(&motorB, 1);
+	Init_Chassis(&agv,motorA,motorB);
 
-	    Init_Chassis(&agv,motorA,motorB);
+	Elevator_Init(&elevator, 3, 2);
+
+	// Initialize TIM14 and DMA
+	WS2812B_DMA_Init(TIM14, 1);
+
+	// Set LED colors
+	WS2812B_DMA_SetColor(0, WS2812B_RED);
+	delay_ms(1000);
+	WS2812B_DMA_SetColor(1, WS2812B_GREEN);
+	WS2812B_DMA_Update();
 
     // Test sequence
     while (1) {
+    	if (ir_detected){
+    		pause_Chassis(&agv);
+    		EXTI->IMR |= (1 << 1); //Reactiva la interrupción del sensor cuando existe movimiento
+			// Opcional: Revisar si el sensor aún está detectando (pin en alto)
+			if ((GPIOA->IDR & (1 << 1)) != 0){
+				set_CoastMode(&agv);
+				ir_detected = false;
+				apply_CurrentSpeedsToMotors(&agv);
+			}
+    	} else {
+    		if (rx_ready == 1) {
+				USART2_HandleMessage(&agv, &elevator);
 
-    	if (ir_detected)
-    	    	    {
-    				Motor_SetSpeed(&motorA,0);
-    				Motor_SetSpeed(&motorB,0);
-
-    	    	        // Opcional: Revisar si el sensor aún está detectando (pin en alto)
-    	    			if ((GPIOA->IDR & (1 << 1)) != 0)
-
-    	    	        {
-    	    	        	Motor_CoastMode(&motorA);
-    	    	        	Motor_CoastMode(&motorB);
-    	    	            ir_detected = false;
-    	    	        }
-    	    	    }
-    	    	    else
-
-
-
-
-    	    	if (rx_ready == 1) {
-    	    		USART1_HandleMessage(&agv);
-
-    	    		// imprimir lo que llegó
-    	    		USART1_SendString("Arreglo mensaje contiene:\r\n");
-    	    		for (uint8_t i = 0; i < mensaje_size; i++) {
-    	    			USART1_SendFloat(mensaje[i], 2);
-    	    			USART1_SendString("\r\n");
-    	    													}
-    	    						}
-    	    }
+				// imprimir lo que llegó
+				//USART2_SendString("Arreglo mensaje contiene:\r\n");
+				//for (uint8_t i = 0; i < mensaje_size; i++) {
+				//	USART2_SendFloat(mensaje[i], 2);
+				//	USART2_SendString("\r\n");
+				//}
+			}
+    	}
     }
+}
 
 
 /* System Initialization Functions */
 void System_Ready_Indicator(void) {
-    // Blink pattern: 3 fast blinks
-    for (int i = 0; i < 3; i++) {
-        GPIOC->ODR |= ((1<<8) | (1<<9));
-        delay_ms(100);
-        GPIOC->ODR &= ~((1<<8) | (1<<9));
-        delay_ms(100);
-    }
-
-    USART1_SendString("\r\n=== STM32 Bluetooth Chassis Demo ===\r\n");
-    USART1_SendString("Send numbers csv for instructions\r\n");
-}
-
-/* Hardware Configuration Functions */
-void LED_Init(void) {
-    // Enable GPIOC clock
-    RCC->AHBENR |= (1 << 19);
-
-    // Configure PC8 (Blue) and PC9 (Green) as outputs
-    // Configure PC7 (Blue / even) and PC6 (Red / odd) as outputs
-    GPIOC->MODER &= ~( (3 << (2 * 8)) | (3 << (2 * 9)) | (3 << (2 * 7)) | (3 << (2 * 6)) );
-    GPIOC->MODER |=  ( (1 << (2 * 8)) | (1 << (2 * 9)) | (1 << (2 * 7)) | (1 << (2 * 6)) );
-
-
-    // Turn off LEDs initially
-    GPIOC->ODR &= ~((1 << 8) | (1 << 9) | (1 << 7) | (1 << 6));
+    USART2_SendString("\r\n=== STM32 Bluetooth Chassis Demo ===\r\n");
+    USART2_SendString("Send numbers csv for instructions\r\n");
 }
 
 void INFRAROJO_INT_INIT(void) {
@@ -212,44 +192,40 @@ void EXTI0_1_IRQHandler(void)
     }
 }
 
-
-
-
-
-void USART1_Init_Interrupt(void) {
+void USART2_Init_Interrupt(void) {
 	// Enable clocks
     RCC->AHBENR  |= (1 << 17);  // GPIOA
-    RCC->APB2ENR |= (1 << 14);  // USART1
+    RCC->APB1ENR |= (1 << 17);  // USART2
 
-    // Configure PA9 (TX) and PA10 (RX)
-    GPIOA->MODER &= ~((3 << 18) | (3 << 20));
-    GPIOA->MODER |=  ((2 << 18) | (2 << 20));  // Alternate function mode
+    // Configure PA2 (TX) and PA3 (RX)
+    GPIOA->MODER &= ~((3 << 2*2) | (3 << 2*3));
+    GPIOA->MODER |=  ((2 << 2*2) | (2 << 2*3));  // Alternate function mode
 
     // Set AF1 for USART1
-    GPIOA->AFR[1] &= ~((0xF << 4) | (0xF << 8));
-    GPIOA->AFR[1] |=  ((1 << 4) | (1 << 8));
+    GPIOA->AFR[0] &= ~((0xF << 4*2) | (0xF << 4*3));
+    GPIOA->AFR[0] |=  ((1 << 4*2) | (1 << 4*3));
 
     // Baud rate 9600 (8MHz clock)
-    USART1->BRR = (8000000 / 9600);
+    USART2->BRR = (8000000 / 9600);
 
     // Enable USART with interrupts
-    USART1->CR1 |= (1 << 0) | (1 << 2) | (1 << 3) | (1 << 5);
+    USART2->CR1 |= (1 << 0) | (1 << 2) | (1 << 3) | (1 << 5);
     // UE: USART Enable
     // RE: Receiver Enable
     // TE: Transmitter Enable
     // RXNEIE: RX Not Empty Interrupt Enable
-    USART1->CR1 &= ~(1 << 6);  // Disable TC interrupt, no interruptions when TX is used
+    USART2->CR1 &= ~(1 << 6);  // Disable TC interrupt, no interruptions when TX is used
 
     // NVIC configuration
-    USART1->ICR = 0xFFFFFFFF;			//Clear all interrups flags
-    NVIC_EnableIRQ(USART1_IRQn);		//Enable USART1 global interrupt
-    NVIC_SetPriority(USART1_IRQn, 0);	//Set priority
+    USART2->ICR = 0xFFFFFFFF;			//Clear all interrups flags
+    NVIC_EnableIRQ(USART2_IRQn);		//Enable USART1 global interrupt
+    NVIC_SetPriority(USART2_IRQn, 0);	//Set priority
 }
 
 /* Communication Functions */
-void USART1_IRQHandler(void){
-    if(USART1->ISR & (1 << 5)) {
-        uint8_t c = USART1->RDR; // Read and clear RXNE flag
+void USART2_IRQHandler(void){
+    if(USART2->ISR & (1 << 5)) {
+        uint8_t c = USART2->RDR; // Read and clear RXNE flag
 
         if(rx_pos < RX_BUF_SIZE-1) {
             rx_buf[rx_pos++] = c;
@@ -261,57 +237,55 @@ void USART1_IRQHandler(void){
             rx_pos = 0; // Reset on overflow
         }
     }
-    // Also clear any other potential flags
-	//USART1->ICR = 0xFFFFFFFF;
 }
 
-void USART1_HandleMessage(CHASSIS* AGV_Chassis) {
+void USART2_HandleMessage(CHASSIS* AGV_Chassis, ELEVATOR* elevator) {
 
 
-	USART1_SendString("Echo: ");
-		USART1_SendString((char*)rx_buf);
+	USART2_SendString("Echo: ");
+	USART2_SendString((char*)rx_buf);
 
-		uint8_t numArrays = parseCSV(rx_buf, rx_pos, parsedArrays);
-		uint8_t numArrayIntFloat = arrayToArrayIntOrFloat(parsedArrays, numArrays, indicacionesArray);
-		decideDir(AGV_Chassis,indicacionesArray, numArrayIntFloat);
+	uint8_t numArrays = parseCSV(rx_buf, rx_pos, parsedArrays);
+	uint8_t numArrayIntFloat = arrayToArrayIntOrFloat(parsedArrays, numArrays, indicacionesArray);
+	decideDir(AGV_Chassis, elevator, indicacionesArray, numArrayIntFloat);
 
-		// Reset for next message
-		rx_pos = 0;
-		rx_ready = 0;
-	}
-
-
-void USART1_SendChar(char c) {
-    while (!(USART1->ISR & (1 << 7)));
-    USART1->TDR = c;
+	// Reset for next message
+	rx_pos = 0;
+	rx_ready = 0;
 }
 
-void USART1_SendString(const char *str) {
-    while (*str) USART1_SendChar(*str++);
+
+void USART2_SendChar(char c) {
+    while (!(USART2->ISR & (1 << 7)));
+    USART2->TDR = c;
 }
 
-void USART1_SendFloat(float value, uint8_t decimalPlaces) {
+void USART2_SendString(const char *str) {
+    while (*str) USART2_SendChar(*str++);
+}
+
+void USART2_SendFloat(float value, uint8_t decimalPlaces) {
     // Handle negative numbers
     if (value < 0) {
-        USART1_SendChar('-');
+        USART2_SendChar('-');
         value = -value;
     }
 
     // Extract integer part
     int integerPart = (int)value;
     char buffer[12];
-    USART1_SendString(itoa(integerPart, buffer, 10));  // Send integer part
+    USART2_SendString(itoa(integerPart, buffer, 10));  // Send integer part
 
     // Only send decimal point if needed
     if (decimalPlaces > 0) {
-        USART1_SendChar('.');
+        USART2_SendChar('.');
 
         // Extract and send fractional part
         float fractionalPart = value - integerPart;
         for (uint8_t i = 0; i < decimalPlaces; i++) {
             fractionalPart *= 10;
             int digit = (int)fractionalPart;
-            USART1_SendChar('0' + digit);
+            USART2_SendChar('0' + digit);
             fractionalPart -= digit;
         }
     }
@@ -553,10 +527,10 @@ uint8_t arrayToArrayIntOrFloat(volatile NumberArray* numbersAsArray, uint8_t num
 
 	// Process the parsed arrays
 	for (uint8_t i = 0; i < numberOfArrays; i++) {
-		USART1_SendString("Number ");
-		USART1_SendChar('0' + i);
-		USART1_SendString(": ");
-		USART1_SendString((const char*)numbersAsArray[i].array);
+		USART2_SendString("Number ");
+		USART2_SendChar('0' + i);
+		USART2_SendString(": ");
+		USART2_SendString((const char*)numbersAsArray[i].array);
 
 		numero = atof(numbersAsArray[i].array, numbersAsArray[i].length);
 
@@ -584,11 +558,11 @@ void decideNegPos(volatile Numeros* numeros, uint8_t count) {
 		if (value < 0) {
 			GPIOC->ODR |= (1<<7);
 			GPIOC->ODR &= ~(1<<6);
-			USART1_SendString("NEGATIVE\r\n");
+			USART2_SendString("NEGATIVE\r\n");
 		} else {
 			GPIOC->ODR |= (1<<6);
 			GPIOC->ODR &= ~(1<<7);
-			USART1_SendString("POSITIVE\r\n");
+			USART2_SendString("POSITIVE\r\n");
 		}
 		delay_ms(200);
 		GPIOC->ODR &= ~(1<<7);
@@ -597,43 +571,48 @@ void decideNegPos(volatile Numeros* numeros, uint8_t count) {
 	}
 }
 
-void decideDir(CHASSIS* AGV_Chassis,volatile Numeros* numeros, uint8_t count) {
+void decideDir(CHASSIS* AGV_Chassis, ELEVATOR* elevator,volatile Numeros* numeros, uint8_t count) {
 
-    // Asegura que hay suficientes elementos para la decisión
+    // Asegura que no hay elementos extras para la decisión
     if (count < 4) return;
 
     if (numeros[0].i == 0) {
         // Apagar todo si el primer valor es 0
-        set_AdvanceSpeed(AGV_Chassis, 0);
-        set_TurnSpeed(AGV_Chassis, 0);
-        apply_CurrentSpeedsToMotors(AGV_Chassis);
+    	stop_Chassis(AGV_Chassis);
+    	EXTI->IMR &= ~(1 << 1); //Desactiva la interrupción del sensor de proximidad momentaneamente
     }
     else if (numeros[0].i == 1) {
         if (numeros[1].i == 0) {
-            // Modo de libre movimiento (coasting)
-            //Motor_CoastMode(&motorA);
-            //Motor_CoastMode(&motorB);
-        }
-        else {
+        	stop_Chassis(AGV_Chassis);
+        	set_CoastMode(AGV_Chassis);
+        	EXTI->IMR &= ~(1 << 1); //Desactiva la interrupción del sensor de proximidad momentaneamente
+        } else {
+        	EXTI->IMR |= (1 << 1); //Reactiva la interrupción del sensor cuando existe movimiento
             float avance = numeros[2].f;
             float giro = numeros[3].f;
 
+
             // Validación del rango permitido para avance
-            if (avance > -1.0f && avance < 1.0f) {
+            if (avance >= -1.0 && avance <= 1.0) {
                 set_AdvanceSpeed(AGV_Chassis, avance);
-                set_TurnSpeed(AGV_Chassis, giro);
             } else {
                 // Si el valor está fuera de rango, detener
                 set_AdvanceSpeed(AGV_Chassis, 0);
-                set_TurnSpeed(AGV_Chassis, 0);
             }
+            if (giro >= -1.0 && giro <= 1.0) {
+				set_TurnSpeed(AGV_Chassis, giro);
+			} else {
+				// Si el valor está fuera de rango, detener
+				set_TurnSpeed(AGV_Chassis, 0);
+			}
             apply_CurrentSpeedsToMotors(AGV_Chassis);
+
         }
+        float elevador = numeros[4].f;
+        elevator_SetSpeed(elevator, elevador);
     }
     else {
         // Cualquier otro caso detiene el sistema
-        set_AdvanceSpeed(AGV_Chassis, 0);
-        set_TurnSpeed(AGV_Chassis, 0);
-        apply_CurrentSpeedsToMotors(AGV_Chassis);
+    	stop_Chassis(AGV_Chassis);
     }
 }

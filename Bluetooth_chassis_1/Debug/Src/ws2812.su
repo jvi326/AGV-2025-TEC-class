@@ -1,0 +1,8 @@
+../Src/ws2812.c:10:16:apply_brightness	16	static
+../Src/ws2812.c:15:6:ws2812_init	24	static
+../Src/ws2812.c:33:6:ws2812_set_brightness	16	static
+../Src/ws2812.c:39:6:ws2812_set_all	32	static
+../Src/ws2812.c:52:6:ws2812_set_all_blue	16	static
+../Src/ws2812.c:63:6:ws2812_set_all_red	16	static
+../Src/ws2812.c:74:6:ws2812_set_all_green	16	static
+../Src/ws2812.c:87:6:ws2812_update	72	static,ignoring_inline_asm

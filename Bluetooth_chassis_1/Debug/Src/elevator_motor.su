@@ -1,0 +1,8 @@
+../Src/elevator_motor.c:8:13:elevator_setDirection	16	static
+../Src/elevator_motor.c:23:13:elevator_setNoDirection	16	static
+../Src/elevator_motor.c:29:6:elevator_SetSpeed	24	static
+../Src/elevator_motor.c:44:6:Elevator_Init	24	static
+../Src/elevator_motor.c:66:6:elevator_Invert	16	static
+../Src/elevator_motor.c:71:6:elevator_Forward	16	static
+../Src/elevator_motor.c:76:6:Elevator_Reverse	16	static
+../Src/elevator_motor.c:81:6:elevator_IsInverted	16	static
