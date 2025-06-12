@@ -6,6 +6,7 @@
  */
 #include <stdint.h>
 #include <stdbool.h>
+#include <math.h>
 #include "stm32f051x8.h"
 #include "motor_controller.h"
 #include "chassis.h"
@@ -112,6 +113,18 @@ void set_CoastMode(CHASSIS* AGV_Chassis){
 	Motor_CoastMode(&AGV_Chassis->wheelLeft);
 	Motor_CoastMode(&AGV_Chassis->wheelRight);
 	AGV_Chassis->brakeEnabled = 0;
+}
+
+void stop_Chassis(CHASSIS* AGV_Chassis){
+	set_AdvanceSpeed(AGV_Chassis, 0);
+	set_TurnSpeed(AGV_Chassis, 0);
+	apply_CurrentSpeedsToMotors(AGV_Chassis);
+}
+
+void pause_Chassis(CHASSIS* AGV_Chassis) {
+	// Apply speed 0 to motors withouth altering the current speeds
+	Motor_SetSpeed(&AGV_Chassis->wheelLeft, 0);
+	Motor_SetSpeed(&AGV_Chassis->wheelRight, 0);
 }
 
 //Status functions

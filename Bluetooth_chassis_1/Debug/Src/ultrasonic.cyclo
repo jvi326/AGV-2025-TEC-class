@@ -1,0 +1,9 @@
+../Src/ultrasonic.c:18:13:delay_us	2
+../Src/ultrasonic.c:27:13:timer6_init	1
+../Src/ultrasonic.c:32:13:timer17_init	1
+../Src/ultrasonic.c:40:13:gpio_init	2
+../Src/ultrasonic.c:49:13:ultrasonic_trigger	1
+../Src/ultrasonic.c:57:14:ultrasonic_measure_one	8
+../Src/ultrasonic.c:74:6:Ultrasonic_Init	1
+../Src/ultrasonic.c:80:7:Ultrasonic_MeasureAll	5
+../Src/ultrasonic.c:90:6:Ultrasonic_Loop	3

@@ -1,0 +1,5 @@
+../Src/ws2812b_dma.c:9:13:colorToBits	4
+../Src/ws2812b_dma.c:18:6:WS2812B_DMA_Init	1
+../Src/ws2812b_dma.c:32:6:WS2812B_DMA_SetColor	2
+../Src/ws2812b_dma.c:36:6:WS2812B_DMA_Update	2
+../Src/ws2812b_dma.c:56:6:WS2812B_DMA_ClearAll	1
